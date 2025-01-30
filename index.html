@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Jeu - Clic le Cercle</title>
+    <title>Jeu Snake et Clic le Cercle</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #f4f4f4;
+            flex-direction: column;
         }
+
         #game {
             position: relative;
             width: 300px;
@@ -21,6 +23,7 @@
             border: 2px solid #333;
             background-color: #fff;
         }
+
         .circle {
             position: absolute;
             width: 50px;
@@ -29,16 +32,45 @@
             border-radius: 50%;
             cursor: pointer;
         }
+
         #score {
             margin-top: 20px;
             font-size: 24px;
         }
+
+        canvas {
+            background-color: #000;
+            border: 1px solid #fff;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 300px;
+            margin-bottom: 10px;
+        }
+
+        .button {
+            margin: 20px;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+
+    <!-- Jeu Cercle -->
     <div id="game"></div>
     <div id="score">Score : 0</div>
-
+    
     <script>
         const game = document.getElementById('game');
         const scoreDisplay = document.getElementById('score');
@@ -59,6 +91,135 @@
         }
 
         createCircle();
+    </script>
+
+    <!-- Jeu Snake -->
+    <div class="game-info">
+        <h1>Jeu Snake</h1>
+        <div>
+            <button id="restartBtn" class="button">Recommencer</button>
+        </div>
+    </div>
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+    
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const gridSize = 15; // Taille des cases (réduite pour avoir plus de cases)
+        const canvasSize = 600; // Taille du canevas
+        let speed = 150; // Vitesse initiale (en ms par frame)
+
+        let snake = [{ x: 15 * gridSize, y: 15 * gridSize }];
+        let direction = "RIGHT";
+        let food = generateFood();
+        let gameInterval;
+
+        // Initialisation du jeu
+        function startGame() {
+            snake = [{ x: 15 * gridSize, y: 15 * gridSize }];
+            direction = "RIGHT";
+            food = generateFood();
+            speed = 150; // Reset de la vitesse
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, speed);
+        }
+
+        // Boucle de jeu
+        function gameLoop() {
+            moveSnake();
+            if (checkCollision()) {
+                // Ici, le serpent ne meurt pas si il touche un bord
+                wrapSnake();
+            }
+            if (checkFoodCollision()) {
+                food = generateFood();
+                speed *= 0.95; // Accélérer le jeu à chaque nourriture mangée
+                clearInterval(gameInterval);
+                gameInterval = setInterval(gameLoop, speed);
+            }
+            drawGame();
+        }
+
+        // Déplacement du serpent
+        function moveSnake() {
+            const head = { ...snake[0] };
+
+            switch (direction) {
+                case "LEFT": head.x -= gridSize; break;
+                case "RIGHT": head.x += gridSize; break;
+                case "UP": head.y -= gridSize; break;
+                case "DOWN": head.y += gridSize; break;
+            }
+
+            snake.unshift(head);
+            if (!checkFoodCollision()) {
+                snake.pop();
+            }
+        }
+
+        // Vérifie si le serpent mange la nourriture
+        function checkFoodCollision() {
+            return snake[0].x === food.x && snake[0].y === food.y;
+        }
+
+        // Vérifie si le serpent touche les bords du canvas
+        function checkCollision() {
+            const head = snake[0];
+            return (
+                head.x < 0 || head.x >= canvasSize ||
+                head.y < 0 || head.y >= canvasSize ||
+                snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)
+            );
+        }
+
+        // Si le serpent touche un bord, il réapparaît de l'autre côté
+        function wrapSnake() {
+            const head = snake[0];
+            if (head.x < 0) head.x = canvasSize - gridSize;
+            if (head.x >= canvasSize) head.x = 0;
+            if (head.y < 0) head.y = canvasSize - gridSize;
+            if (head.y >= canvasSize) head.y = 0;
+        }
+
+        // Générer la position de la nourriture
+        function generateFood() {
+            let foodX = Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize;
+            let foodY = Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize;
+            return { x: foodX, y: foodY };
+        }
+
+        // Dessiner le serpent et la nourriture
+        function drawGame() {
+            ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+            // Dessiner le serpent
+            snake.forEach((segment, index) => {
+                ctx.fillStyle = index === 0 ? "green" : "white";
+                ctx.fillRect(segment.x, segment.y, gridSize, gridSize);
+            });
+
+            // Dessiner la nourriture
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x, food.y, gridSize, gridSize);
+        }
+
+        // Gérer les touches du clavier
+        document.addEventListener("keydown", (e) => {
+            switch (e.key) {
+                case "ArrowLeft": if (direction !== "RIGHT") direction = "LEFT"; break;
+                case "ArrowRight": if (direction !== "LEFT") direction = "RIGHT"; break;
+                case "ArrowUp": if (direction !== "DOWN") direction = "UP"; break;
+                case "ArrowDown": if (direction !== "UP") direction = "DOWN"; break;
+            }
+        });
+
+        // Démarrer le jeu au chargement
+        window.onload = startGame;
+
+        // Recommencer le jeu
+        document.getElementById("restartBtn").addEventListener("click", startGame);
+
     </script>
 </body>
 </html>
