@@ -14,6 +14,45 @@
             height: 100vh;
             margin: 0;
             flex-direction: column;
+            text-align: center;
+        }
+
+        h1 {
+            color: #4CAF50;
+        }
+
+        #gameCanvas {
+            background-color: #000;
+            border: 1px solid #fff;
+            margin-top: 20px;
+        }
+
+        .button {
+            margin-top: 20px;
+            padding: 12px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background-color: #45a049;
+        }
+
+        a {
+            text-decoration: none;
+            color: white;
+            background-color: #4CAF50;
+            padding: 12px 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        a:hover {
+            background-color: #45a049;
         }
 
         #game {
@@ -22,6 +61,7 @@
             height: 300px;
             border: 2px solid #333;
             background-color: #fff;
+            margin-top: 20px;
         }
 
         .circle {
@@ -37,41 +77,43 @@
             margin-top: 20px;
             font-size: 24px;
         }
-
-        canvas {
-            background-color: #000;
-            border: 1px solid #fff;
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-
-        .game-info {
-            display: flex;
-            justify-content: space-between;
-            width: 300px;
-            margin-bottom: 10px;
-        }
-
-        .button {
-            margin: 20px;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
 
+    <!-- Choix du jeu -->
+    <h1>Choisis ton jeu</h1>
+    <button class="button" onclick="showGame('snake')">Jeu Snake</button>
+    <button class="button" onclick="showGame('circle')">Attrape le Cercle</button>
+
+    <!-- Jeu Snake -->
+    <div id="snakeGame" style="display:none;">
+        <h2>Jeu Snake</h2>
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        <button class="button" id="startBtn" onclick="startGameSnake()">Commencer</button>
+        <button class="button" id="restartBtn" style="display:none;" onclick="startGameSnake()">Recommencer</button>
+    </div>
+
     <!-- Jeu Cercle -->
-    <div id="game"></div>
-    <div id="score">Score : 0</div>
-    
+    <div id="circleGame" style="display:none;">
+        <h2>Attrape le Cercle</h2>
+        <div id="game"></div>
+        <div id="score">Score : 0</div>
+    </div>
+
     <script>
+        // Gérer le changement de jeu
+        function showGame(game) {
+            if (game === 'snake') {
+                document.getElementById('snakeGame').style.display = 'block';
+                document.getElementById('circleGame').style.display = 'none';
+            } else if (game === 'circle') {
+                document.getElementById('circleGame').style.display = 'block';
+                document.getElementById('snakeGame').style.display = 'none';
+            }
+        }
+
+        // Jeu Cercle
         const game = document.getElementById('game');
         const scoreDisplay = document.getElementById('score');
         let score = 0;
@@ -91,89 +133,73 @@
         }
 
         createCircle();
-    </script>
 
-    <!-- Jeu Snake -->
-    <div class="game-info">
-        <h1>Jeu Snake</h1>
-        <div>
-            <button id="restartBtn" class="button">Recommencer</button>
-        </div>
-    </div>
-    <canvas id="gameCanvas" width="600" height="600"></canvas>
-    
-    <script>
+        // Jeu Snake
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        const gridSize = 15; // Taille des cases (réduite pour avoir plus de cases)
-        const canvasSize = 600; // Taille du canevas
-        let speed = 150; // Vitesse initiale (en ms par frame)
-
+        const gridSize = 20;
+        const canvasSize = 600;
+        let speed = 150;
         let snake = [{ x: 15 * gridSize, y: 15 * gridSize }];
         let direction = "RIGHT";
         let food = generateFood();
+        let obstacles = [];
         let gameInterval;
+        let isGameStarted = false;
 
-        // Initialisation du jeu
-        function startGame() {
+        function startGameSnake() {
+            if (!isGameStarted) {
+                isGameStarted = true;
+                document.getElementById("startBtn").style.display = "none";
+                document.getElementById("restartBtn").style.display = "inline-block";
+            }
+
             snake = [{ x: 15 * gridSize, y: 15 * gridSize }];
             direction = "RIGHT";
             food = generateFood();
-            speed = 150; // Reset de la vitesse
+            obstacles = [];
+            speed = 150;
             clearInterval(gameInterval);
             gameInterval = setInterval(gameLoop, speed);
         }
 
-        // Boucle de jeu
         function gameLoop() {
             moveSnake();
-            if (checkCollision()) {
-                // Ici, le serpent ne meurt pas si il touche un bord
-                wrapSnake();
-            }
+            if (checkCollision()) wrapSnake();
             if (checkFoodCollision()) {
                 food = generateFood();
-                speed *= 0.95; // Accélérer le jeu à chaque nourriture mangée
+                speed *= 0.95;
                 clearInterval(gameInterval);
                 gameInterval = setInterval(gameLoop, speed);
+                addObstacle();
             }
             drawGame();
         }
 
-        // Déplacement du serpent
         function moveSnake() {
             const head = { ...snake[0] };
-
             switch (direction) {
                 case "LEFT": head.x -= gridSize; break;
                 case "RIGHT": head.x += gridSize; break;
                 case "UP": head.y -= gridSize; break;
                 case "DOWN": head.y += gridSize; break;
             }
-
             snake.unshift(head);
-            if (!checkFoodCollision()) {
-                snake.pop();
-            }
+            if (!checkFoodCollision()) snake.pop();
         }
 
-        // Vérifie si le serpent mange la nourriture
         function checkFoodCollision() {
             return snake[0].x === food.x && snake[0].y === food.y;
         }
 
-        // Vérifie si le serpent touche les bords du canvas
         function checkCollision() {
             const head = snake[0];
-            return (
-                head.x < 0 || head.x >= canvasSize ||
-                head.y < 0 || head.y >= canvasSize ||
-                snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)
-            );
+            return head.x < 0 || head.x >= canvasSize || head.y < 0 || head.y >= canvasSize ||
+                snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y) ||
+                obstacles.some(obstacle => obstacle.x === head.x && obstacle.y === head.y);
         }
 
-        // Si le serpent touche un bord, il réapparaît de l'autre côté
         function wrapSnake() {
             const head = snake[0];
             if (head.x < 0) head.x = canvasSize - gridSize;
@@ -182,26 +208,42 @@
             if (head.y >= canvasSize) head.y = 0;
         }
 
-        // Générer la position de la nourriture
         function generateFood() {
             let foodX = Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize;
             let foodY = Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize;
             return { x: foodX, y: foodY };
         }
 
-        // Dessiner le serpent et la nourriture
+        function addObstacle() {
+            if (Math.random() < 0.3) { // 30% chance d'ajouter un obstacle
+                const obstacle = {
+                    x: Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize,
+                    y: Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize
+                };
+                obstacles.push(obstacle);
+            }
+        }
+
         function drawGame() {
             ctx.clearRect(0, 0, canvasSize, canvasSize);
 
-            // Dessiner le serpent
+            // Dessiner le serpent (avec des segments arrondis)
             snake.forEach((segment, index) => {
-                ctx.fillStyle = index === 0 ? "green" : "white";
-                ctx.fillRect(segment.x, segment.y, gridSize, gridSize);
+                ctx.fillStyle = index === 0 ? "green" : "lightgreen";
+                ctx.beginPath();
+                ctx.arc(segment.x + gridSize / 2, segment.y + gridSize / 2, gridSize / 2, 0, Math.PI * 2);
+                ctx.fill();
             });
 
-            // Dessiner la nourriture
-            ctx.fillStyle = "red";
+            // Dessiner la nourriture (petit carré bleu)
+            ctx.fillStyle = "blue";
             ctx.fillRect(food.x, food.y, gridSize, gridSize);
+
+            // Dessiner les obstacles
+            ctx.fillStyle = "gray";
+            obstacles.forEach(obstacle => {
+                ctx.fillRect(obstacle.x, obstacle.y, gridSize, gridSize);
+            });
         }
 
         // Gérer les touches du clavier
@@ -213,12 +255,6 @@
                 case "ArrowDown": if (direction !== "UP") direction = "DOWN"; break;
             }
         });
-
-        // Démarrer le jeu au chargement
-        window.onload = startGame;
-
-        // Recommencer le jeu
-        document.getElementById("restartBtn").addEventListener("click", startGame);
 
     </script>
 </body>
