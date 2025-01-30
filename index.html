@@ -14,6 +14,7 @@
             height: 100vh;
             margin: 0;
             flex-direction: column;
+
         }
 
         #game {
@@ -22,6 +23,7 @@
             height: 300px;
             border: 2px solid #333;
             background-color: #fff;
+            margin-top: 20px;
         }
 
         .circle {
@@ -67,11 +69,20 @@
 </head>
 <body>
 
-    <!-- Jeu Cercle -->
-    <div id="game"></div>
-    <div id="score">Score : 0</div>
-    
+
     <script>
+        // Gérer le changement de jeu
+        function showGame(game) {
+            if (game === 'snake') {
+                document.getElementById('snakeGame').style.display = 'block';
+                document.getElementById('circleGame').style.display = 'none';
+            } else if (game === 'circle') {
+                document.getElementById('circleGame').style.display = 'block';
+                document.getElementById('snakeGame').style.display = 'none';
+            }
+        }
+
+        // Jeu Cercle
         const game = document.getElementById('game');
         const scoreDisplay = document.getElementById('score');
         let score = 0;
@@ -91,6 +102,129 @@
         }
 
         createCircle();
+
+        // Jeu Snake
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const gridSize = 20;
+        const canvasSize = 600;
+        let speed = 150;
+        let snake = [{ x: 15 * gridSize, y: 15 * gridSize }];
+        let direction = "RIGHT";
+        let food = generateFood();
+        let obstacles = [];
+        let gameInterval;
+        let isGameStarted = false;
+
+        function startGameSnake() {
+            if (!isGameStarted) {
+                isGameStarted = true;
+                document.getElementById("startBtn").style.display = "none";
+                document.getElementById("restartBtn").style.display = "inline-block";
+            }
+
+            snake = [{ x: 15 * gridSize, y: 15 * gridSize }];
+            direction = "RIGHT";
+            food = generateFood();
+            obstacles = [];
+            speed = 150;
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, speed);
+        }
+
+        function gameLoop() {
+            moveSnake();
+            if (checkCollision()) wrapSnake();
+            if (checkFoodCollision()) {
+                food = generateFood();
+                speed *= 0.95;
+                clearInterval(gameInterval);
+                gameInterval = setInterval(gameLoop, speed);
+                addObstacle();
+            }
+            drawGame();
+        }
+
+        function moveSnake() {
+            const head = { ...snake[0] };
+            switch (direction) {
+                case "LEFT": head.x -= gridSize; break;
+                case "RIGHT": head.x += gridSize; break;
+                case "UP": head.y -= gridSize; break;
+                case "DOWN": head.y += gridSize; break;
+            }
+            snake.unshift(head);
+            if (!checkFoodCollision()) snake.pop();
+        }
+
+        function checkFoodCollision() {
+            return snake[0].x === food.x && snake[0].y === food.y;
+        }
+
+        function checkCollision() {
+            const head = snake[0];
+            return head.x < 0 || head.x >= canvasSize || head.y < 0 || head.y >= canvasSize ||
+                snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y) ||
+                obstacles.some(obstacle => obstacle.x === head.x && obstacle.y === head.y);
+        }
+
+        function wrapSnake() {
+            const head = snake[0];
+            if (head.x < 0) head.x = canvasSize - gridSize;
+            if (head.x >= canvasSize) head.x = 0;
+            if (head.y < 0) head.y = canvasSize - gridSize;
+            if (head.y >= canvasSize) head.y = 0;
+        }
+
+        function generateFood() {
+            let foodX = Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize;
+            let foodY = Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize;
+            return { x: foodX, y: foodY };
+        }
+
+        function addObstacle() {
+            if (Math.random() < 0.3) { // 30% chance d'ajouter un obstacle
+                const obstacle = {
+                    x: Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize,
+                    y: Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize
+                };
+                obstacles.push(obstacle);
+            }
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+            // Dessiner le serpent (avec des segments arrondis)
+            snake.forEach((segment, index) => {
+                ctx.fillStyle = index === 0 ? "green" : "lightgreen";
+                ctx.beginPath();
+                ctx.arc(segment.x + gridSize / 2, segment.y + gridSize / 2, gridSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Dessiner la nourriture (petit carré bleu)
+            ctx.fillStyle = "blue";
+            ctx.fillRect(food.x, food.y, gridSize, gridSize);
+
+            // Dessiner les obstacles
+            ctx.fillStyle = "gray";
+            obstacles.forEach(obstacle => {
+                ctx.fillRect(obstacle.x, obstacle.y, gridSize, gridSize);
+            });
+        }
+
+        // Gérer les touches du clavier
+        document.addEventListener("keydown", (e) => {
+            switch (e.key) {
+                case "ArrowLeft": if (direction !== "RIGHT") direction = "LEFT"; break;
+                case "ArrowRight": if (direction !== "LEFT") direction = "RIGHT"; break;
+                case "ArrowUp": if (direction !== "DOWN") direction = "UP"; break;
+                case "ArrowDown": if (direction !== "UP") direction = "DOWN"; break;
+            }
+        });
+
     </script>
 
     <!-- Jeu Snake -->
